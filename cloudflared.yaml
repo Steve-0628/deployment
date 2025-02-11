@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: cloudflared
+  name: cloudflared
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      pod: cloudflared
+  template:
+    metadata:
+      labels:
+        pod: cloudflared
+    spec:
+      containers:
+      - command:
+        - cloudflared
+        - tunnel
+        - --no-autoupdate
+        - --metrics
+        - 0.0.0.0:2000
+        - run
+        image: cloudflare/cloudflared:latest
+        name: cloudflared
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: 2000
+          failureThreshold: 5
+          initialDelaySeconds: 20
+          periodSeconds: 10
+        env:
+          - name: TUNNEL_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: cloudflared
+                key: CLOUDFLARE_TUNNEL_TOKEN
+

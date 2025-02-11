@@ -1,0 +1,182 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misskey-develop-misskey-deployment
+spec:
+  selector:
+    matchLabels:
+      app: misskey-develop-misskey
+  template:
+    metadata:
+      labels:
+        app: misskey-develop-misskey
+    spec:
+      containers:
+        - name: misskey-develop
+          image: misskey/misskey:develop
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: misskey-develop-config-volume
+              mountPath: /misskey/.config/
+      volumes:
+        - name: misskey-develop-config-volume
+          configMap:
+            name: misskey-develop-config
+            items:
+              - key: config.yml
+                path: default.yml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misskey-develop-postgres-deployment
+spec:
+  selector:
+    matchLabels:
+      app: misskey-develop-postgres
+  template:
+    metadata:
+      labels:
+        app: misskey-develop-postgres
+    spec:
+      containers:
+        - name: misskey-devlop-postgres
+          image: postgres:14
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: misskey
+            - name: POSTGRES_PASSWORD
+              value: misskey
+            - name: PGDATA
+              value: /var/lib/postgresql/data/database
+                #  command: ["postgres"]
+          volumeMounts:
+            - name: misskey-develop-postgres-volume
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: misskey-develop-postgres-volume
+          persistentVolumeClaim:
+            claimName: misskey-develop-postgres-pvc
+      securityContext:
+        runAsUser: 999
+        fsGroup: 999
+        supplementalGroups: [0, 27]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misskey-develop-redis-deployment
+spec:
+  selector:
+    matchLabels:
+      app: misskey-develop-redis
+  template:
+    metadata:
+      labels:
+        app: misskey-develop-redis
+    spec:
+      containers:
+        - name: misskey-develop-redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: misskey-develop-redis-volume
+              mountPath: /data
+          command: ["redis-server"]
+      securityContext:
+        runAsUser: 999
+        fsGroup: 999
+        supplementalGroups: [0, 27]
+      volumes:
+        - name: misskey-develop-redis-volume
+          persistentVolumeClaim:
+            claimName: misskey-develop-redis-pvc
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: misskey-develop-config
+data:
+  config.yml: |
+    url: https://k8s-misskey-dev.stesan.dev
+    port: 3000
+    db:
+      host: misskey-develop-postgres-service
+      port: 5432
+      db: misskey
+      user: misskey
+      pass: misskey
+    dbReplications: false
+    redis:
+      host: misskey-develop-redis-service
+      port: 6379
+    id: 'aidx'
+    proxyBYpassHosts:
+      - api.deepl.com
+      - api-free.deepl.com
+      - www.recaptcha.net
+      - hcaptcha.com
+      - challenges.cloudflare.com
+    proxyRemoteFiles: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: misskey-develop-misskey-service
+spec:
+  selector:
+    app: misskey-develop-misskey
+  ports:
+    - protocol: TCP
+      port: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: misskey-develop-postgres-service
+spec:
+  selector:
+    app: misskey-develop-postgres
+  ports:
+    - protocol: TCP
+      port: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: misskey-develop-redis-service
+spec:
+  selector:
+    app: misskey-develop-redis
+  ports:
+    - protocol: TCP
+      port: 6379
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: misskey-develop-postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-client
+  resources:
+    requests:
+      storage: 10G
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: misskey-develop-redis-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-client
+  resources:
+    requests:
+      storage: 128M

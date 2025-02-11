@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: discord-tts
+  name: discord-tts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discord-tts
+  template:
+    metadata:
+      labels:
+        app: discord-tts
+    spec:
+      containers:
+        - name: discord-tts
+          image: ghcr.io/sim1222/discord-tts:latest@sha256:2f137ca5e2b35b661f7ba0adf198061f8f8397ecee1431da08b02d94c276495d
+          name: discord-tts
+          env:
+            - name: VOICEVOX_HOST
+              value: http://discord-tts-voicevox-service:50021
+            - name: PERSISTENT_PATH
+              value: /var/discordtts/db/db.json
+            - name: DISCORD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: discordtts
+                  key: DISCORD_TOKEN
+            - name: SOZAI_INDEX_URL
+              value: https://synchthia-sounds.storage.googleapis.com/index.json
+          volumeMounts:
+            - name: discord-tts-volume
+              mountPath: /var/discordtts
+      initContainers:
+        - name: clean-directory 
+          image: alpine:3.21.2
+          command: ['rm', '-rf', '/var/discordtts/emoji-ja']
+          volumeMounts:
+            - name: discord-tts-volume
+              mountPath: /var/discordtts
+        - name: emoji-ja-clone
+          image: alpine/git:2.47.1
+          command: ['git', 'clone', 'https://github.com/yagays/emoji-ja', '/var/discordtts/emoji-ja']
+          volumeMounts:
+            - name: discord-tts-volume
+              mountPath: /var/discordtts
+        - name: make-directory 
+          image: alpine:3.21.2
+          command: ['mkdir', '-p', '/var/discordtts/db']
+          volumeMounts:
+            - name: discord-tts-volume
+              mountPath: /var/discordtts
+      volumes:
+        - name: discord-tts-volume
+          persistentVolumeClaim:
+            claimName: discord-tts-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: discord-tts-voicevox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: discord-tts-voicevox
+  template:
+    metadata:
+      labels:
+        app: discord-tts-voicevox
+    spec:
+      containers:
+        - name: discord-tts-voicevox
+          image: voicevox/voicevox_engine:cpu-latest@sha256:762748533b872fb6e6bb5da78945f8dd2a9645c08c3d8735b139a91adf752e54
+          name: discord-tts-voicevox
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: discord-tts-voicevox-service
+spec:
+  selector:
+    app: discord-tts-voicevox
+  ports:
+    - name: http
+      port: 50021
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: discord-tts-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-client
+  resources:
+    requests:
+      storage: 1G

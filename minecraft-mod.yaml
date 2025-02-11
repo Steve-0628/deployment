@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minecraft-mod-deployment
+spec:
+  selector:
+    matchLabels:
+      app: minecraft-mod
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: minecraft-mod
+    spec:
+      containers:
+        - name: minecraft-mod
+          image: ghcr.io/steve-0628/mcdocker-mod-test:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 25565
+          volumeMounts:
+            - name: minecraft-mod-volume
+              mountPath: /minecraft_data
+      imagePullSecrets:
+        - name: ghcr
+      volumes:
+        - name: minecraft-mod-volume
+          persistentVolumeClaim:
+            claimName: minecraft-mod-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-mod-service
+spec:
+  selector:
+    app: minecraft-mod
+  ports:
+    - protocol: TCP
+      port: 25565 
+  externalIPs:
+    - 172.16.1.10
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minecraft-mod-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-client
+  resources:
+    requests:
+      storage: 10G

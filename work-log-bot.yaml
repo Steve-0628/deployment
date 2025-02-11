@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: work-log-bot-deployment
+spec:
+  selector:
+    matchLabels:
+      app: work-log-bot
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: work-log-bot
+    spec:
+      containers:
+        - name: work-log-bot
+          image: ghcr.io/steve-0628/log-bot:latest
+          env:
+            - name: DISCORD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: discord-work-log-bot
+                  key: DISCORD_TOKEN
+            - name: WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: discord-work-log-bot
+                  key: WEBHOOK_URL
+
