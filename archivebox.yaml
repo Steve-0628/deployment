@@ -81,7 +81,7 @@ spec:
         spec:
           restartPolicy: Never
           containers:
-            - image: busybox:1.36.1
+            - image: busybox:1.37.0
               name: archivebox-remove-chrome-data
               command: ["sh", "-c", "rm -rf /data/data/personas/Default/chrome_profile"]
               volumeMounts:
