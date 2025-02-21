@@ -73,7 +73,7 @@ spec:
     spec:
       containers:
         - name: discord-tts-voicevox
-          image: voicevox/voicevox_engine:cpu-latest@sha256:df51d531be0dd55bfc5e16d133e1d075451496ac9b26afe81b2cbb30aa9f7bd6
+          image: voicevox/voicevox_engine:cpu-latest@sha256:8d6574dee639863b292373d805f6e52f30cadc35c71c01acf7bfc86c11b711ad
           name: discord-tts-voicevox
 ---
 apiVersion: v1
