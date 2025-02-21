@@ -42,3 +42,23 @@ spec:
             - image: bitnami/kubectl:1.32.2
               name: deployment-restart
               command: ["kubectl", "rollout", "restart", "deployment", "misskey-develop-misskey-deployment"]
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: redeploy
+spec:
+  concurrencyPolicy: Forbid
+  schedule: "0 * * * *"
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        spec:
+          serviceAccountName: deployment-restart
+          restartPolicy: Never
+          containers:
+            - image: ghcr.io/steve-0628/deployment:latest
+              imagePullPolicy: Always
+              name: renew-deployment
+              command: ["kubectl", "apply", "-f", "/deployment"]
