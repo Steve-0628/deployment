@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: discord-tts
-          image: ghcr.io/sim1222/discord-tts:latest@sha256:2f137ca5e2b35b661f7ba0adf198061f8f8397ecee1431da08b02d94c276495d
+          image: ghcr.io/steve-0628/discord-tts:latest@sha256:be074508bed6c160726db7c89a144d49bceae689d757d482e4bc30074e4fc409
           name: discord-tts
           env:
             - name: VOICEVOX_HOST
