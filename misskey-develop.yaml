@@ -81,7 +81,7 @@ spec:
     spec:
       containers:
         - name: misskey-develop-redis
-          image: redis:7-alpine
+          image: redis:8-alpine
           ports:
             - containerPort: 6379
           volumeMounts:
