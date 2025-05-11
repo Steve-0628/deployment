@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: send-deployment
+spec:
+  selector:
+    matchLabels:
+      app: send
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: send
+    spec:
+      containers:
+        - name: send
+          image: registry.gitlab.com/timvisee/send:v3.4.25
+          ports:
+            - containerPort: 1443
+          env:
+            - name: BASE_URL
+              value: https://send.stesan.dev
+            - name: REDIS_HOST
+              value: send-redis-service
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: send-redis-deployment
+spec:
+  selector:
+    matchLabels:
+      app: send-redis
+  template:
+    metadata:
+      labels:
+        app: send-redis
+    spec:
+      containers:
+        - name: send-redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: send-redis-service
+spec:
+  selector:
+    app: send-redis
+  ports:
+    - protocol: TCP
+      port: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: send-service
+spec:
+  selector:
+    app: send
+  ports:
+    - protocol: TCP
+      port: 1443
