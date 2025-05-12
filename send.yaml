@@ -22,6 +22,10 @@ spec:
               value: https://send.stesan.dev
             - name: REDIS_HOST
               value: send-redis-service
+            - name: MAX_FILE_SIZE
+              value: "274877906944"
+            - name: EXPIRE_TIMES_SECONDS
+              value: 3600,86400,604800
 ---
 apiVersion: apps/v1
 kind: Deployment
