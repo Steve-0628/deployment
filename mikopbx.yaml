@@ -106,7 +106,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: nfs-client
+  storageClassName: longhorn
   resources:
     requests:
       storage: 5Gi
