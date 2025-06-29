@@ -116,7 +116,7 @@ data:
       host: misskey-develop-redis-service
       port: 6379
     id: 'aidx'
-    proxyBYpassHosts:
+    proxyBypassHosts:
       - api.deepl.com
       - api-free.deepl.com
       - www.recaptcha.net
