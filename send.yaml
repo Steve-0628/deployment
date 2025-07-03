@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: send
-          image: registry.gitlab.com/timvisee/send:v3.4.26
+          image: registry.gitlab.com/timvisee/send:v3.4.27
           ports:
             - containerPort: 1443
           env:
