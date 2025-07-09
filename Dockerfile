@@ -1,4 +1,4 @@
-FROM bitnami/kubectl:1.33.1
+FROM bitnami/kubectl:1.33.2
 
 COPY . /deployment
 

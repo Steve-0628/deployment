@@ -39,7 +39,7 @@ spec:
           serviceAccountName: deployment-restart
           restartPolicy: Never
           containers:
-            - image: bitnami/kubectl:1.33.1
+            - image: bitnami/kubectl:1.33.2
               name: deployment-restart
               command: ["kubectl", "rollout", "restart", "deployment", "misskey-develop-misskey-deployment"]
 ---
