@@ -41,7 +41,7 @@ spec:
             - name: discord-tts-volume
               mountPath: /var/discordtts
         - name: emoji-ja-clone
-          image: alpine/git:2.49.0
+          image: alpine/git:2.49.1
           command: ['git', 'clone', 'https://github.com/yagays/emoji-ja', '/var/discordtts/emoji-ja']
           volumeMounts:
             - name: discord-tts-volume
