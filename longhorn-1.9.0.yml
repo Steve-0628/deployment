@@ -5008,7 +5008,7 @@ spec:
     spec:
       containers:
       - name: longhorn-manager
-        image: longhornio/longhorn-manager:v1.9.0
+        image: longhornio/longhorn-manager:v1.9.1
         imagePullPolicy: IfNotPresent
         securityContext:
           privileged: true
@@ -5081,7 +5081,7 @@ spec:
               fieldPath: spec.nodeName
       - name: pre-pull-share-manager-image
         imagePullPolicy: IfNotPresent
-        image: longhornio/longhorn-share-manager:v1.9.0
+        image: longhornio/longhorn-share-manager:v1.9.1
         command: ["sh", "-c", "echo share-manager image pulled && sleep infinity"]
       volumes:
       - name: boot
@@ -5134,11 +5134,11 @@ spec:
     spec:
       initContainers:
         - name: wait-longhorn-manager
-          image: longhornio/longhorn-manager:v1.9.0
+          image: longhornio/longhorn-manager:v1.9.1
           command: ['sh', '-c', 'while [ $(curl -m 1 -s -o /dev/null -w "%{http_code}" http://longhorn-backend:9500/v1) != "200" ]; do echo waiting; sleep 2; done']
       containers:
         - name: longhorn-driver-deployer
-          image: longhornio/longhorn-manager:v1.9.0
+          image: longhornio/longhorn-manager:v1.9.1
           imagePullPolicy: IfNotPresent
           command:
           - longhorn-manager
@@ -5217,7 +5217,7 @@ spec:
             weight: 1
       containers:
       - name: longhorn-ui
-        image: longhornio/longhorn-ui:v1.9.0
+        image: longhornio/longhorn-ui:v1.9.1
         imagePullPolicy: IfNotPresent
         volumeMounts:
         - name: nginx-cache
