@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: honi
+spec:
+  selector:
+    matchLabels:
+      app: honi
+  template:
+    metadata:
+      labels:
+        app: honi
+    spec:
+      containers:
+        - name: honi
+          image: ghcr.io/steve-0628/honi:476f295
+          volumeMounts:
+            - name: config
+              mountPath: /ai/config.json
+              subPath: config.json
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          configMap:
+            name: honi-config
+            items:
+              - key: config.json
+                path: config.json
+        - name: data
+          persistentVolumeClaim:
+            claimName: honi-data-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: honi-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-client
+  resources:
+    requests:
+      storage: 1G
