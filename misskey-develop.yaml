@@ -43,7 +43,7 @@ spec:
     spec:
       containers:
         - name: misskey-devlop-postgres
-          image: postgres:14
+          image: postgres:18
           ports:
             - containerPort: 5432
           env:
