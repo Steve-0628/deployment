@@ -35,7 +35,7 @@ spec:
               mountPath: /var/discordtts
       initContainers:
         - name: clean-directory 
-          image: alpine:3.22.1
+          image: alpine:3.22.2
           command: ['rm', '-rf', '/var/discordtts/emoji-ja']
           volumeMounts:
             - name: discord-tts-volume
@@ -47,7 +47,7 @@ spec:
             - name: discord-tts-volume
               mountPath: /var/discordtts
         - name: make-directory 
-          image: alpine:3.22.1
+          image: alpine:3.22.2
           command: ['mkdir', '-p', '/var/discordtts/db']
           volumeMounts:
             - name: discord-tts-volume
