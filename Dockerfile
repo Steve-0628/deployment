@@ -1,4 +1,4 @@
-FROM bitnami/kubectl:1.33.4
+FROM rancher/kubectl:v1.33.4
 
 COPY . /deployment
 
