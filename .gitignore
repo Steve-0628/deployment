@@ -1,2 +1,4 @@
 secrets/*
 !secrets/.gitkeep
+!secrets/sealed
+cert.pem
