@@ -39,7 +39,7 @@ spec:
           serviceAccountName: deployment-restart
           restartPolicy: Never
           containers:
-            - image: rancher/kubectl:v1.34.1
+            - image: rancher/kubectl:v1.34.2
               name: deployment-restart
               command: ["kubectl", "rollout", "restart", "deployment", "misskey-develop-misskey-deployment"]
 ---
