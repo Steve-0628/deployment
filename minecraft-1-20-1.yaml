@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minecraft-deployment
+spec:
+  serviceName: minecraft-deployment-service
+  selector:
+    matchLabels:
+      app: minecraft
+  updateStrategy:
+    type: OnDelete
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: minecraft
+    spec:
+      containers:
+        - name: minecraft
+          image: itzg/minecraft-server:java21@sha256:93a17edf6af10da5656c4bfdabf84ec502593fd645f47308aac5360620d813e6
+          ports:
+            - containerPort: 25565
+          volumeMounts:
+            - name: minecraft-volume
+              mountPath: /data
+          env:
+            - name: EULA
+              value: "TRUE"
+            - name: OPS
+              value: |
+                Steve_0628
+            - name: MODPACK_PLATFORM
+              value: AUTO_CURSEFORGE
+            - name: CF_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: curseforge-token
+                  key: CURSEFORGE_TOKEN
+            - name: CF_SLUG
+              value: all-the-mods-10
+            - name: MEMORY
+              value: 8G
+      imagePullSecrets:
+        - name: ghcr
+      volumes:
+        - name: minecraft-volume
+          persistentVolumeClaim:
+            claimName: minecraft-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minecraft-deployment-service
+spec:
+  selector:
+    app: minecraft
+  ports:
+    - protocol: TCP
+      port: 25565 
+      name: tcp
+    - protocol: UDP
+      port: 25565 
+      name: udp
+  loadBalancerIP: 172.16.10.100
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: minecraft-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 10G
