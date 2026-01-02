@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: todo-db-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-db-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-db
+  template:
+    metadata:
+      labels:
+        app: todo-db
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: todo
+            - name: POSTGRES_PASSWORD
+              value: todo_password
+            - name: POSTGRES_DB
+              value: todo_db
+            - name: PGDATA
+              value: /var/lib/postgresql/data/database
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: db-data
+          persistentVolumeClaim:
+            claimName: todo-db-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-db-service
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+  selector:
+    app: todo-db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-app-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: todo-app
+  template:
+    metadata:
+      labels:
+        app: todo-app
+    spec:
+      containers:
+        - name: todo-app
+          image: ghcr.io/steve-0628/todo:latest@sha256:0a07a23314c4b0faf0c28ed0fd70e01d189f481e76f42f973d707b0f7917a2f3
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_HOSTNAME
+              value: todo-db-service
+            - name: DB_USER
+              value: todo
+            - name: DB_PASSWORD
+              value: todo_password
+            - name: DB_DATABASE
+              value: todo_db
+            - name: ASPNETCORE_ENVIRONMENT
+              value: Production
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-app-service
+spec:
+  ports:
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: todo-app
