@@ -13,7 +13,7 @@ spec:
     spec:
       containers:
         - name: honi
-          image: ghcr.io/steve-0628/honi:476f295
+          image: ghcr.io/steve-0628/honi:latest@sha256:71e321b28d7bf994672f9e38feb4329161ef80aeaa09a66476b2302c1919076c
           volumeMounts:
             - name: config
               mountPath: /ai/config.json
