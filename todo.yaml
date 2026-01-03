@@ -73,7 +73,7 @@ spec:
     spec:
       containers:
         - name: todo-app
-          image: ghcr.io/steve-0628/todo:latest@sha256:0a07a23314c4b0faf0c28ed0fd70e01d189f481e76f42f973d707b0f7917a2f3
+          image: ghcr.io/steve-0628/todo:latest@sha256:5458f91dd4e09c1c26b908b480cbf66300cc802e5d989f18116c7281ed2c1249
           ports:
             - containerPort: 8080
           env:
