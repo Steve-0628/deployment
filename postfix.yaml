@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postfix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postfix
+  template:
+    metadata:
+      labels:
+        app: postfix
+    spec:
+      containers:
+      - name: postfix
+        image: juanluisbaptiste/postfix:1.8.0
+        ports:
+          - containerPort: 25
+        env:
+          - name: SERVER_HOSTNAME
+            valueFrom:
+              secretKeyRef:
+                name: postfix-secrets
+                key: SERVER_HOSTNAME
+          - name: SMTP_SERVER
+            valueFrom:
+              secretKeyRef:
+                name: postfix-secrets
+                key: SMTP_SERVER
+          - name: SMTP_PORT
+            value: "587"
+
+          - name: SMTP_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: postfix-secrets
+                key: SMTP_USERNAME
+          - name: SMTP_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postfix-secrets
+                key: SMTP_PASSWORD
+
+          - name: SMTP_NETWORKS
+            value: "172.16.0.0/16,127.0.0.0/8"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postfix-service
+spec:
+  selector:
+    app: postfix
+  ports:
+  - port: 25
+    targetPort: 25
+  loadBalancerIP: 172.16.5.3
+  type: LoadBalancer
