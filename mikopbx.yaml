@@ -1,11 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: mikopbx
 spec:
   selector:
     matchLabels:
       app: mikopbx
+  replicas: 1
   template:
     metadata:
       labels:
@@ -118,7 +119,7 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: nfs-client
+  storageClassName: longhorn
   resources:
     requests:
       storage: 5Gi
@@ -139,5 +140,39 @@ spec:
       name: siptcp
     - port: 8080
       name: webui
+    - port: 10000
+      protocol: UDP
+      name: port0
+    - port: 10001
+      protocol: UDP
+      name: port1
+    - port: 10002
+      protocol: UDP
+      name: port2
+    - port: 10003
+      protocol: UDP
+      name: port3
+    - port: 10004
+      protocol: UDP
+      name: port4
+    - port: 10005
+      protocol: UDP
+      name: port5
+    - port: 10006
+      protocol: UDP
+      name: port6
+    - port: 10007
+      protocol: UDP
+      name: port7
+    - port: 10008
+      protocol: UDP
+      name: port8
+    - port: 10009
+      protocol: UDP
+      name: port9
+    - port: 10010
+      protocol: UDP
+      name: port10
   loadBalancerIP: 172.16.10.200
   type: LoadBalancer
+  externalTrafficPolicy: Local
