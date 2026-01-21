@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
       - name: mariadb
-        image: mariadb:11.8.5-ubi9@sha256:80f6876d4ec2b708a798999e4548deeb4934be1bd400f80059d132b030ca2475
+        image: mariadb:11.8.5-ubi9@sha256:5d08e22b53ae89504133bf61cdff5fb7a8caeb62f1e865cbb00e1f039dace22d
         env:
         - name: MARIADB_ROOT_PASSWORD
           value: super_secret_mariadb_password
