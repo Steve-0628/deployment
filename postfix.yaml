@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: postfix
-        image: juanluisbaptiste/postfix:1.8.1
+        image: juanluisbaptiste/postfix:1.8.2
         ports:
           - containerPort: 25
         env:
