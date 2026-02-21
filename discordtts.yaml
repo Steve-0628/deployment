@@ -17,7 +17,6 @@ spec:
       containers:
         - name: discord-tts
           image: ghcr.io/steve-0628/discord-tts:latest@sha256:cd9a2e2ea2ab201a727a597b4930f1586a6b181c0551a3b6e3931960892083f7
-          name: discord-tts
           env:
             - name: VOICEVOX_HOST
               value: http://discord-tts-voicevox-service:50021
@@ -74,7 +73,6 @@ spec:
       containers:
         - name: discord-tts-voicevox
           image: voicevox/voicevox_engine:cpu-latest@sha256:a328bd7c27a2a34b0c9a6efdd255cb235c62b8885caed809220882dce072afb1
-          name: discord-tts-voicevox
 ---
 apiVersion: v1
 kind: Service
