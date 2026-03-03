@@ -1,0 +1,180 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: steskey-statefulset
+spec:
+  selector:
+    matchLabels:
+      app: steskey-app
+  serviceName: steskey
+  template:
+    metadata:
+      labels:
+        app: steskey-app
+    spec:
+      containers:
+        - name: steskey
+          image: ghcr.io/steve-0628/misskey:latest@sha256:62846170ce55a1e335609141ae5e51b0a7356d943f6cff878dbe97783c2d1b16
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: steskey-config-volume
+              mountPath: /misskey/.config/
+      volumes:
+        - name: steskey-config-volume
+          configMap:
+            name: steskey-config
+            items:
+              - key: config.yml
+                path: default.yml
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: steskey-postgres-statefulset
+spec:
+  selector:
+    matchLabels:
+      app: steskey-postgres
+  serviceName: steskey-postgres
+  template:
+    metadata:
+      labels:
+        app: steskey-postgres
+    spec:
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: steskey-postgres
+          image: postgres:18.3-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: misskey
+            - name: POSTGRES_PASSWORD
+              value: misskey
+            - name: PGDATA
+              value: /var/lib/postgresql/data/database
+          volumeMounts:
+            - name: steskey-postgres-volume
+              mountPath: /var/lib/postgresql/data
+          securityContext:
+            runAsUser: 999
+            runAsGroup: 999
+      volumes:
+        - name: steskey-postgres-volume
+          persistentVolumeClaim:
+            claimName: steskey-postgres-pvc
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: steskey-redis-statefulset
+spec:
+  selector:
+    matchLabels:
+      app: steskey-redis
+  serviceName: steskey-redis
+  template:
+    metadata:
+      labels:
+        app: steskey-redis
+    spec:
+      containers:
+        - name: steskey-redis
+          image: redis:8.6.1-alpine
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: steskey-redis-volume
+              mountPath: /data
+          command: ["redis-server"]
+      volumes:
+        - name: steskey-redis-volume
+          persistentVolumeClaim:
+            claimName: steskey-redis-pvc
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: steskey-config
+data:
+  config.yml: |
+    url: https://steskey-dev.stesan.dev
+    port: 3000
+    db:
+      host: steskey-postgres-service
+      port: 5432
+      db: misskey
+      user: misskey
+      pass: misskey
+    dbReplications: false
+    redis:
+      host: steskey-redis-service
+      port: 6379
+    id: 'aid'
+    proxyBypassHosts:
+      - api.deepl.com
+      - api-free.deepl.com
+      - www.recaptcha.net
+      - hcaptcha.com
+      - challenges.cloudflare.com
+    proxyRemoteFiles: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: steskey-service
+spec:
+  selector:
+    app: steskey-app
+  ports:
+    - protocol: TCP
+      port: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: steskey-postgres-service
+spec:
+  selector:
+    app: steskey-postgres
+  ports:
+    - protocol: TCP
+      port: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: steskey-redis-service
+spec:
+  selector:
+    app: steskey-redis
+  ports:
+    - protocol: TCP
+      port: 6379
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: steskey-postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-client
+  resources:
+    requests:
+      storage: 10G
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: steskey-redis-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs-client
+  resources:
+    requests:
+      storage: 128M
