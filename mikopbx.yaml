@@ -6,6 +6,7 @@ spec:
   selector:
     matchLabels:
       app: mikopbx
+  serviceName: mikopbx
   replicas: 1
   template:
     metadata:
