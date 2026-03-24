@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: minecraft
-          image: itzg/minecraft-server:java21@sha256:7305c165f9667f0f228b467ad8b8fc0e41c8363514100f33a2a055f3b95dad0f
+          image: itzg/minecraft-server:java21@sha256:b961a70e573d0c3074ccda5168aa7679758ac820fed5bc059e4fd03109f5edec
           ports:
             - containerPort: 25565
           volumeMounts:
