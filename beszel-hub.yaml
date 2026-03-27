@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: beszel-hub-statefulset
+spec:
+  selector:
+    matchLabels:
+      app: beszel-hub
+  serviceName: "beszel-hub-headless"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: beszel-hub
+    spec:
+      containers:
+        - name: beszel-hub
+          image: henrygd/beszel:0.18.4
+          ports:
+            - containerPort: 8090
+              name: web
+          volumeMounts:
+            - name: beszel-data
+              mountPath: /beszel_data
+  volumeClaimTemplates:
+    - metadata:
+        name: beszel-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: beszel-hub-headless
+  labels:
+    app: beszel-hub
+spec:
+  ports:
+    - port: 8090
+      name: web
+  selector:
+    app: beszel-hub
+  type: LoadBalancer
+  loadBalancerIP: 172.16.10.102
