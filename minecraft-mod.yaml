@@ -12,6 +12,9 @@ spec:
       labels:
         app: minecraft-mod
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
       containers:
         - name: minecraft-mod
           image: ghcr.io/steve-0628/mcdocker-mod-test:latest
