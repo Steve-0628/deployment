@@ -24,6 +24,7 @@ spec:
           volumeMounts:
             - name: minecraft-mod-volume
               mountPath: /minecraft_data
+          command: ["/minecraft/init.sh"]
       imagePullSecrets:
         - name: ghcr
       volumes:
