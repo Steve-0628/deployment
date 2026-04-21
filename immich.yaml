@@ -20,7 +20,7 @@ spec:
         resources:
           requests:
             cpu: 500m
-            memory: 2560Mi
+            memory: 6Gi
         env:
           - name: TZ
             value: Asia/Tokyo
