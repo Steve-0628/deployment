@@ -17,6 +17,10 @@ spec:
           image: registry.gitlab.com/timvisee/send:v3.4.27
           ports:
             - containerPort: 1443
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
           env:
             - name: BASE_URL
               value: https://send.stesan.dev
@@ -45,6 +49,10 @@ spec:
           image: redis:8-alpine
           ports:
             - containerPort: 6379
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
 ---
 apiVersion: v1
 kind: Service

@@ -17,6 +17,10 @@ spec:
           image: filebrowser/filebrowser:v2.63.2@sha256:4dce87308b9f9cfbcf8d0a284fc9565d2b515530a6bae2d920b388161e093f26
           ports:
             - containerPort: 8080
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
           volumeMounts:
             - name: filebrowser-nfs
               mountPath: /srv
@@ -77,4 +81,3 @@ spec:
       targetPort: 8080
   selector:
     app: filebrowser-app
-

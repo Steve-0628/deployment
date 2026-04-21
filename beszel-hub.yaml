@@ -19,6 +19,10 @@ spec:
           ports:
             - containerPort: 8090
               name: web
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
           volumeMounts:
             - name: beszel-data
               mountPath: /beszel_data

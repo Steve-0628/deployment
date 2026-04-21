@@ -17,6 +17,10 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
+          resources:
+            requests:
+              cpu: 250m
+              memory: 768Mi
           volumeMounts:
             - name: misskey-develop-config-volume
               mountPath: /misskey/.config/
@@ -46,6 +50,10 @@ spec:
           image: postgres:14
           ports:
             - containerPort: 5432
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
           env:
             - name: POSTGRES_USER
               value: misskey
@@ -84,6 +92,10 @@ spec:
           image: redis:8-alpine
           ports:
             - containerPort: 6379
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
           volumeMounts:
             - name: misskey-develop-redis-volume
               mountPath: /data

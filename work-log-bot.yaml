@@ -15,6 +15,10 @@ spec:
       containers:
         - name: work-log-bot
           image: ghcr.io/steve-0628/log-bot:latest
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
           env:
             - name: DISCORD_TOKEN
               valueFrom:
@@ -26,4 +30,3 @@ spec:
                 secretKeyRef:
                   name: discord-work-log-bot
                   key: WEBHOOK_URL
-

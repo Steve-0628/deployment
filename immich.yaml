@@ -17,6 +17,10 @@ spec:
         ports:
         - containerPort: 2283
           name: web
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2560Mi
         env:
           - name: TZ
             value: Asia/Tokyo
@@ -60,6 +64,10 @@ spec:
         ports:
         - containerPort: 3003
           name: immich-ml
+        resources:
+          requests:
+            cpu: 1500m
+            memory: 3Gi
         env:
           - name: TZ
             value: Asia/Tokyo
@@ -101,6 +109,10 @@ spec:
         ports:
         - containerPort: 6379
           name: redis
+        resources:
+          requests:
+            cpu: 20m
+            memory: 64Mi
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -123,6 +135,10 @@ spec:
         ports:
         - containerPort: 5432
           name: postgres
+        resources:
+          requests:
+            cpu: 100m
+            memory: 1Gi
         env:
         - name: POSTGRES_USER
           value: postgres

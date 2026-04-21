@@ -31,6 +31,10 @@ spec:
         - run
         image: cloudflare/cloudflared:2026.3.0
         name: cloudflared
+        resources:
+          requests:
+            cpu: 25m
+            memory: 64Mi
         livenessProbe:
           httpGet:
             path: /ready

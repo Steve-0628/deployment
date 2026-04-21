@@ -17,6 +17,10 @@ spec:
         image: juanluisbaptiste/postfix:1.9.0
         ports:
           - containerPort: 25
+        resources:
+          requests:
+            cpu: 20m
+            memory: 64Mi
         env:
           - name: SERVER_HOSTNAME
             valueFrom:

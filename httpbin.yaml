@@ -24,6 +24,10 @@ spec:
           image: kennethreitz/httpbin:latest
           ports:
             - containerPort: 80
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
 ---
 apiVersion: v1
 kind: Service

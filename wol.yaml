@@ -17,6 +17,10 @@ spec:
           image: ghcr.io/steve-0628/wol:latest@sha256:bad9acba504437ef70a8a22ce17edbc4d6d926d6fa56fe87e7dc275b5558f704
           ports:
             - containerPort: 3000
+          resources:
+            requests:
+              cpu: 50m
+              memory: 192Mi
           env:
             - name:  BASE_DIRECTORY
               value: "/index"
@@ -41,4 +45,3 @@ spec:
     app: wol-app
   type: LoadBalancer
   loadBalancerIP: 172.16.10.101
-

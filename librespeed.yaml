@@ -17,6 +17,10 @@ spec:
           image: linuxserver/librespeed:6.0.2
           ports:
             - containerPort: 80
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
 ---
 apiVersion: v1
 kind: Service

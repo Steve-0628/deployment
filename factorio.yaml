@@ -17,6 +17,10 @@ spec:
           image: factoriotools/factorio:stable
           ports:
             - containerPort: 34197
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
           volumeMounts:
             - name: factorio-volume
               mountPath: /factorio/saves
