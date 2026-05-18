@@ -19,7 +19,7 @@ spec:
           name: web
         resources:
           requests:
-            cpu: 500m
+            cpu: 2500m
             memory: 6Gi
         env:
           - name: TZ
