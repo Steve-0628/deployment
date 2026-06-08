@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tuwunel
+spec:
+  selector:
+    matchLabels:
+      app: tuwunel-app
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: tuwunel-app
+    spec:
+      containers:
+      - name: tuwunel-app
+        image: jevolk/tuwunel:v1.7.1
+        ports:
+        - containerPort: 6167
+        env:
+        - name: TUWUNEL_SERVER_NAME
+          value: stesan.dev
+        - name: TUWUNEL_ALLOW_REGISTRATION
+          value: "false"
+        #   value: "true"
+        # - name: TUWUNEL_YES_I_AM_VERY_VERY_SURE_I_WANT_AN_OPEN_REGISTRATION_SERVER_PRONE_TO_ABUSE
+        #   value: "true"
+        - name: TUWUNEL_ALLOW_FEDERATION
+          value: "true"
+        - name: TUWUNEL_PORT
+          value: "6167"
+        - name: TUWUNEL_ADDRESS
+          value: "0.0.0.0"
+        volumeMounts:
+          - name: tuwunel-volume
+            mountPath: /var/lib/tuwunel
+  volumeClaimTemplates:
+    - metadata:
+        name: tuwunel-volume
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: nfs-client
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tuwunel-app-service
+spec:
+  selector:
+    app: tuwunel-app
+  ports:
+  - port: 6167
+    name: tuwunel-web
