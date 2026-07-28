@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: librespeed
-          image: linuxserver/librespeed:6.1.0
+          image: linuxserver/librespeed:6.2.0
           ports:
             - containerPort: 80
           resources:
