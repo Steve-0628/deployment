@@ -1,4 +1,4 @@
-FROM rancher/kubectl:v1.36.0
+FROM rancher/kubectl:v1.36.2
 
 COPY . /deployment
 
