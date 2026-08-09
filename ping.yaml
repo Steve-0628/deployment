@@ -32,6 +32,10 @@ spec:
           subPath: Targets
         - name: smokeping-data
           mountPath: /data
+        securityContext:
+          capabilities:
+            add:
+            - NET_RAW
       volumes:
       - name: smokeping-config
         configMap:
