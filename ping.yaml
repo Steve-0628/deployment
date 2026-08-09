@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: smokeping-statefulset
+spec:
+  selector:
+    matchLabels:
+      app: smokeping
+  serviceName: smokeping-service
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: smokeping
+    spec:
+      containers:
+      - name: smokeping
+        image: linuxserver/smokeping:2.9.0
+        env:
+        - name: TZ
+          value: Asia/Tokyo
+        ports:
+        - containerPort: 80
+          name: web
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+        volumeMounts:
+        - name: smokeping-config
+          mountPath: /config/Targets
+          subPath: Targets
+        - name: smokeping-data
+          mountPath: /data
+      volumes:
+      - name: smokeping-config
+        configMap:
+          name: smokeping-configmap
+  volumeClaimTemplates:
+  - metadata:
+      name: smokeping-data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smokeping-configmap
+data:
+  Targets: |
+    *** Targets ***
+    probe = FPing
+    menu = Top
+    title = Network Stability
+    + Cloudflare
+    menu = Cloudflare
+    title = Cloudflare DNS latency
+    ++ CloudflareIPv4
+    menu = Cloudflare IPv4
+    title = Cloudflare 1.1.1.1
+    host = 1.1.1.1
+    ++ CloudflareIPv6
+    menu = Cloudflare IPv6
+    title = Cloudflare 2606:4700:4700::1111
+    probe = FPing6
+    host = 2606:4700:4700::1111
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: smokeping-service
+spec:
+  selector:
+    app: smokeping
+  ports:
+  - port: 80
+    targetPort: 80
+    name: web
+
