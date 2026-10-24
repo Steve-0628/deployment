@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: steskey
-          image: ghcr.io/steve-0628/misskey:latest@sha256:4f384444a721831afa9fac1fc1a042f8924c0366dfeb11d3dac208a2b7c473b7
+          image: ghcr.io/steve-0628/misskey:latest@sha256:eb6dc36c83f44de5bef689aa1d55f6a63bfcde49a33fbbfefebba679671b3f4f
           ports:
             - containerPort: 3000
           resources:
