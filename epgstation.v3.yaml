@@ -1,0 +1,445 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: epgstation
+spec:
+  selector:
+    app: epgstation
+  ports:
+    - name: http
+      port: 8888
+      targetPort: 8888
+    - name: stream
+      port: 8889
+      targetPort: 8889
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: epgstation-headless
+spec:
+  clusterIP: None
+  selector:
+    app: epgstation
+  ports:
+    - port: 8888
+      name: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: epgstation
+spec:
+  serviceName: epgstation-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: epgstation
+  template:
+    metadata:
+      labels:
+        app: epgstation
+    spec:
+      containers:
+        - name: epgstation
+          image: l3tnun/epgstation:v3.0.0-beta2
+          # The image ships no ffmpeg (neither Dockerfile.debian nor
+          # Dockerfile.alpine installs it), so every browser-playable stream
+          # format fails with EncodeProcessManageModelCreateError. The image's
+          # ENTRYPOINT is ["npm"] and CMD ["start"]; overriding both installs
+          # the encoder into the container's own writable layer, so no volume
+          # or PVC is involved. Debian trixie has no separate "ffprobe"
+          # package - /usr/bin/ffprobe is owned by ffmpeg, and naming a
+          # nonexistent package aborts the whole install. Best-effort on
+          # purpose: if apt fails the app still starts and only the
+          # transcoded formats are lost.
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              if ! command -v ffmpeg >/dev/null 2>&1; then
+                apt-get update -qq || true
+                apt-get install -y -qq --no-install-recommends ffmpeg \
+                  || echo "ffmpeg install failed: transcoded streaming unavailable" >&2
+                rm -rf /var/lib/apt/lists/*
+              fi
+              exec npm start
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+          ports:
+            - containerPort: 8888
+              name: http
+            - containerPort: 8889
+              name: stream
+          volumeMounts:
+            - name: config
+              mountPath: /app/config/config.yml
+              subPath: config.yml
+              readOnly: true
+            - name: config
+              mountPath: /app/config/operatorLogConfig.yml
+              subPath: operatorLogConfig.yml
+              readOnly: true
+            - name: config
+              mountPath: /app/config/serviceLogConfig.yml
+              subPath: serviceLogConfig.yml
+              readOnly: true
+            - name: config
+              mountPath: /app/config/epgUpdaterLogConfig.yml
+              subPath: epgUpdaterLogConfig.yml
+              readOnly: true
+            - name: state
+              mountPath: /app/data
+              subPath: data
+            - name: state
+              mountPath: /app/logs
+              subPath: logs
+            - name: state
+              mountPath: /app/thumbnail
+              subPath: thumbnail
+            - name: recorded
+              mountPath: /app/recorded
+          # apt-get runs before the server starts, so give it room; without
+          # this the liveness probe could kill the pod mid-install.
+          startupProbe:
+            httpGet:
+              path: /
+              port: 8888
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8888
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8888
+            initialDelaySeconds: 60
+            periodSeconds: 20
+
+        - name: mariadb
+          image: mariadb:10.11
+          args:
+            - --character-set-server=utf8mb4
+            - --collation-server=utf8mb4_unicode_ci
+            - --performance-schema=false
+          env:
+            - name: TZ
+              value: Asia/Tokyo
+            - name: MARIADB_DATABASE
+              value: epgstation
+            - name: MARIADB_USER
+              value: epgstation
+            - name: MARIADB_PASSWORD
+              value: epgstation
+            - name: MARIADB_ROOT_PASSWORD
+              value: epgstation
+          ports:
+            - containerPort: 3306
+              name: mysql
+          volumeMounts:
+            - name: database
+              mountPath: /var/lib/mysql
+          readinessProbe:
+            exec:
+              command:
+                - healthcheck.sh
+                - --connect
+                - --innodb_initialized
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+      volumes:
+        - name: config
+          configMap:
+            name: epgstation-config
+        # recordings on the same NFS share edcb used. To keep them on the
+        # StatefulSet instead, move "recorded" into volumeClaimTemplates below
+        # and use subPath: recorded here.
+        - name: recorded
+          nfs:
+            server: 172.16.1.3
+            path: /mnt/data-tank/share/tv
+
+  volumeClaimTemplates:
+    - metadata:
+        name: state
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+    - metadata:
+        name: database
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: epgstation-config
+data:
+  config.yml: |
+    port: 8888
+    mirakurunPath: http://172.16.1.5:40772/
+    # The client always appends this port: realtime.ts builds
+    # `${location.protocol}//${location.hostname}:${socketIOPort}`. Cloudflare's
+    # edge only proxies 80/8080/8880/2052/2082/2086/2095 (http) and
+    # 443/2053/2083/2087/2096/8443 (https), so :8888 is unreachable from the
+    # tunnel and socket.io polling fails. 443 keeps it on the tunnel's own port.
+    clientSocketioPort: 443
+
+    dbtype: mysql
+    mysql:
+      host: 127.0.0.1
+      port: 3306
+      user: epgstation
+      password: epgstation
+      database: epgstation
+      charset: utf8mb4
+
+    epgUpdateIntervalTime: 10
+
+    conflictPriority: 1
+    recPriority: 2
+
+    recordedFormat: '%YEAR%年%MONTH%月%DAY%日%HOUR%時%MIN%分%SEC%秒-%TITLE%'
+    recordedFileExtension: .m2ts
+    recorded:
+      - name: recorded
+        path: '%ROOT%/recorded'
+
+    thumbnail: '%ROOT%/thumbnail'
+    thumbnailSize: 480x270
+    thumbnailPosition: 5
+
+    # Installed by the container's launch arguments into the image's own
+    # writable layer. Debian trixie has no separate "ffprobe" package;
+    # /usr/bin/ffprobe is owned by ffmpeg.
+    ffmpeg: /usr/bin/ffmpeg
+    ffprobe: /usr/bin/ffprobe
+
+    # EncodeProcessManageModel caps concurrent encode/stream processes at
+    # encodeProcessNum, and the built-in default is 0, so with this unset every
+    # transcoded stream is refused with EncodeProcessManageModelCreateError.
+    # The upstream template uses 4; each live viewer takes one slot.
+    encodeProcessNum: 4
+    concurrentEncodeNum: 1
+
+    # Streaming. Configuration.setTemplateValues only fills the ffmpeg presets
+    # from config.yml.template when `stream:` exists at all, so omitting it
+    # leaves isEnableTSLiveStream=false and the UI has no live-view option.
+    # Defining a category (live.ts.hls) suppresses the template fill for that
+    # category, so the transcode presets are spelled out here. HLS segments go
+    # to streamFilePath, which defaults to /app/data/streamfiles (state PVC).
+    # The probed terrestrial service is MPEG-2 video at 1440x1080i, SAR 4:3
+    # (16:9 display). Video copy preserves MPEG-2, which hls.js cannot play.
+    # Keep copy for compatible sources; use H.264 for browser playback.
+    # Explicit video/audio maps exclude ARIB data and secondary audio PIDs.
+    # "1080p ultrafast" preserves the source dimensions and aspect ratio,
+    # deinterlaces to one frame per input frame, and uses software H.264.
+    # CRF 23 allows variable bitrate; ultrafast trades compression for speed.
+    # Bound decoder, filter and encoder thread counts instead of auto-sizing
+    # to all host CPUs. These are thread limits, not a total CPU usage cap.
+    stream:
+      live:
+        ts:
+          m2ts:
+            - name: 無変換
+          mp4:
+            - name: 1080p ultrafast
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -threads 1 -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0?
+                  -filter_threads 1 -c:v libx264 -threads:v 2 -preset ultrafast -crf 23 -pix_fmt yuv420p
+                  -vf yadif=mode=send_frame:parity=auto:deint=interlaced -g 60
+                  -c:a aac -ar 48000 -b:a 128k -ac 2
+                  -movflags +frag_keyframe+empty_moov+default_base_moof -y -f mp4 pipe:1'
+            - name: 720p ultrafast
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -threads 1 -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0?
+                  -filter_threads 1 -c:v libx264 -threads:v 2 -preset ultrafast -crf 23 -pix_fmt yuv420p
+                  -vf yadif=mode=send_frame:parity=auto:deint=interlaced,scale=1280:720,setsar=1 -g 60
+                  -c:a aac -ar 48000 -b:a 128k -ac 2
+                  -movflags +frag_keyframe+empty_moov+default_base_moof -y -f mp4 pipe:1'
+            - name: 720p
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -i pipe:0 -sn -threads 0 -c:a aac -ar 48000 -b:a 192k -ac 2
+                  -c:v libx264 -vf yadif,scale=-2:720 -b:v 3000k -profile:v baseline -preset veryfast
+                  -tune fastdecode,zerolatency -movflags frag_keyframe+empty_moov+faststart+default_base_moof
+                  -y -f mp4 pipe:1'
+            - name: 480p
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -i pipe:0 -sn -threads 0 -c:a aac -ar 48000 -b:a 128k -ac 2
+                  -c:v libx264 -vf yadif,scale=-2:480 -b:v 1500k -profile:v baseline -preset veryfast
+                  -tune fastdecode,zerolatency -movflags frag_keyframe+empty_moov+faststart+default_base_moof
+                  -y -f mp4 pipe:1'
+          hls:
+            - name: 1080p ultrafast
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -threads 1 -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0?
+                  -filter_threads 1 -c:v libx264 -threads:v 2 -preset ultrafast -crf 23 -pix_fmt yuv420p
+                  -vf yadif=mode=send_frame:parity=auto:deint=interlaced -g 60
+                  -c:a aac -ar 48000 -b:a 128k -ac 2 -max_muxing_queue_size 1024
+                  -f hls -hls_time 3 -hls_list_size 17
+                  -hls_segment_filename %streamFileDir%/stream%streamNum%-%09d.ts
+                  -hls_flags delete_segments %OUTPUT%'
+            - name: 720p ultrafast
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -threads 1 -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0?
+                  -filter_threads 1 -c:v libx264 -threads:v 2 -preset ultrafast -crf 23 -pix_fmt yuv420p
+                  -vf yadif=mode=send_frame:parity=auto:deint=interlaced,scale=1280:720,setsar=1 -g 60
+                  -c:a aac -ar 48000 -b:a 128k -ac 2 -max_muxing_queue_size 1024
+                  -f hls -hls_time 3 -hls_list_size 17
+                  -hls_segment_filename %streamFileDir%/stream%streamNum%-%09d.ts
+                  -hls_flags delete_segments %OUTPUT%'
+            - name: 1080i copy
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0? -threads 0
+                  -ignore_unknown -max_muxing_queue_size 1024 -f hls -hls_time 3 -hls_list_size 17
+                  -hls_allow_cache 1 -hls_segment_filename %streamFileDir%/stream%streamNum%-%09d.ts
+                  -hls_flags delete_segments -c:v copy -c:a aac -ar 48000 -b:a 128k -ac 2
+                  -flags +loop-global_header %OUTPUT%'
+            - name: 720p
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0? -threads 0
+                  -ignore_unknown -max_muxing_queue_size 1024 -f hls -hls_time 3 -hls_list_size 17
+                  -hls_allow_cache 1 -hls_segment_filename %streamFileDir%/stream%streamNum%-%09d.ts
+                  -hls_flags delete_segments -c:v libx264 -vf yadif,scale=-2:720 -b:v 3000k
+                  -preset veryfast -c:a aac -ar 48000 -b:a 192k -ac 2
+                  -flags +loop-global_header %OUTPUT%'
+            - name: 480p
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0? -threads 0
+                  -ignore_unknown -max_muxing_queue_size 1024 -f hls -hls_time 3 -hls_list_size 17
+                  -hls_allow_cache 1 -hls_segment_filename %streamFileDir%/stream%streamNum%-%09d.ts
+                  -hls_flags delete_segments -c:v libx264 -vf yadif,scale=-2:480 -b:v 1500k
+                  -preset veryfast -c:a aac -ar 48000 -b:a 128k -ac 2
+                  -flags +loop-global_header %OUTPUT%'
+      recorded:
+        ts:
+          mp4:
+            - name: 1080p ultrafast
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -threads 1 -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0?
+                  -filter_threads 1 -c:v libx264 -threads:v 2 -preset ultrafast -crf 23 -pix_fmt yuv420p
+                  -vf yadif=mode=send_frame:parity=auto:deint=interlaced -g 60
+                  -c:a aac -ar 48000 -b:a 128k -ac 2
+                  -movflags +frag_keyframe+empty_moov+default_base_moof -y -f mp4 pipe:1'
+            - name: 720p ultrafast
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -threads 1 -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0?
+                  -filter_threads 1 -c:v libx264 -threads:v 2 -preset ultrafast -crf 23 -pix_fmt yuv420p
+                  -vf yadif=mode=send_frame:parity=auto:deint=interlaced,scale=1280:720,setsar=1 -g 60
+                  -c:a aac -ar 48000 -b:a 128k -ac 2
+                  -movflags +frag_keyframe+empty_moov+default_base_moof -y -f mp4 pipe:1'
+            - name: 720p
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -i pipe:0 -sn -threads 0 -c:a aac -ar 48000 -b:a 192k -ac 2
+                  -c:v libx264 -vf yadif,scale=-2:720 -b:v 3000k -profile:v baseline -preset veryfast
+                  -tune fastdecode,zerolatency -movflags frag_keyframe+empty_moov+faststart+default_base_moof
+                  -y -f mp4 pipe:1'
+            - name: 480p
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -i pipe:0 -sn -threads 0 -c:a aac -ar 48000 -b:a 128k -ac 2
+                  -c:v libx264 -vf yadif,scale=-2:480 -b:v 1500k -profile:v baseline -preset veryfast
+                  -tune fastdecode,zerolatency -movflags frag_keyframe+empty_moov+faststart+default_base_moof
+                  -y -f mp4 pipe:1'
+          hls:
+            - name: 1080p ultrafast
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -threads 1 -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0?
+                  -filter_threads 1 -c:v libx264 -threads:v 2 -preset ultrafast -crf 23 -pix_fmt yuv420p
+                  -vf yadif=mode=send_frame:parity=auto:deint=interlaced -g 60
+                  -c:a aac -ar 48000 -b:a 128k -ac 2 -max_muxing_queue_size 1024
+                  -f hls -hls_time 3 -hls_list_size 17
+                  -hls_segment_filename %streamFileDir%/stream%streamNum%-%09d.ts
+                  -hls_flags delete_segments %OUTPUT%'
+            - name: 720p ultrafast
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -threads 1 -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0?
+                  -filter_threads 1 -c:v libx264 -threads:v 2 -preset ultrafast -crf 23 -pix_fmt yuv420p
+                  -vf yadif=mode=send_frame:parity=auto:deint=interlaced,scale=1280:720,setsar=1 -g 60
+                  -c:a aac -ar 48000 -b:a 128k -ac 2 -max_muxing_queue_size 1024
+                  -f hls -hls_time 3 -hls_list_size 17
+                  -hls_segment_filename %streamFileDir%/stream%streamNum%-%09d.ts
+                  -hls_flags delete_segments %OUTPUT%'
+            - name: 1080i copy
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0? -threads 0
+                  -ignore_unknown -max_muxing_queue_size 1024 -f hls -hls_time 3 -hls_list_size 17
+                  -hls_allow_cache 1 -hls_segment_filename %streamFileDir%/stream%streamNum%-%09d.ts
+                  -hls_flags delete_segments -c:v copy -c:a aac -ar 48000 -b:a 128k -ac 2
+                  -flags +loop-global_header %OUTPUT%'
+            - name: 720p
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0? -threads 0
+                  -ignore_unknown -max_muxing_queue_size 1024 -f hls -hls_time 3 -hls_list_size 17
+                  -hls_allow_cache 1 -hls_segment_filename %streamFileDir%/stream%streamNum%-%09d.ts
+                  -hls_flags delete_segments -c:v libx264 -vf yadif,scale=-2:720 -b:v 3000k
+                  -preset veryfast -c:a aac -ar 48000 -b:a 192k -ac 2
+                  -flags +loop-global_header %OUTPUT%'
+            - name: 480p
+              cmd:
+                  '%FFMPEG% -dual_mono_mode main -i pipe:0 -sn -dn -map 0:v:0 -map 0:a:0? -threads 0
+                  -ignore_unknown -max_muxing_queue_size 1024 -f hls -hls_time 3 -hls_list_size 17
+                  -hls_allow_cache 1 -hls_segment_filename %streamFileDir%/stream%streamNum%-%09d.ts
+                  -hls_flags delete_segments -c:v libx264 -vf yadif,scale=-2:480 -b:v 1500k
+                  -preset veryfast -c:a aac -ar 48000 -b:a 128k -ac 2
+                  -flags +loop-global_header %OUTPUT%'
+
+  # EPGStation hard-requires these three. The image only ships them as
+  # *.sample.yml, and a missing one is process.exit(1) at startup.
+  operatorLogConfig.yml: |
+    appenders:
+      system: { type: file, maxLogSize: 1048576, backups: 3, filename: "%OperatorSystem%", pattern: "-yyyy-MM-dd" }
+      access: { type: file, maxLogSize: 1048576, backups: 3, filename: "%OperatorAccess%", pattern: "-yyyy-MM-dd" }
+      stream: { type: file, maxLogSize: 1048576, backups: 3, filename: "%OperatorStream%", pattern: "-yyyy-MM-dd" }
+      encode: { type: file, maxLogSize: 1048576, backups: 3, filename: "%OperatorEncode%", pattern: "-yyyy-MM-dd" }
+      console: { type: console }
+      stdout: { type: stdout }
+    categories:
+      default: { appenders: [console, stdout], level: info }
+      system: { appenders: [system, stdout], level: info }
+      access: { appenders: [access, stdout], level: info }
+      stream: { appenders: [stream, stdout], level: info }
+      encode: { appenders: [encode, stdout], level: info }
+
+  serviceLogConfig.yml: |
+    appenders:
+      system: { type: file, maxLogSize: 1048576, backups: 3, filename: "%ServiceSystem%", pattern: "-yyyy-MM-dd" }
+      access: { type: file, maxLogSize: 1048576, backups: 3, filename: "%ServiceAccess%", pattern: "-yyyy-MM-dd" }
+      stream: { type: file, maxLogSize: 1048576, backups: 3, filename: "%ServiceStream%", pattern: "-yyyy-MM-dd" }
+      encode: { type: file, maxLogSize: 1048576, backups: 3, filename: "%ServiceEncode%", pattern: "-yyyy-MM-dd" }
+      console: { type: console }
+      stdout: { type: stdout }
+    categories:
+      default: { appenders: [console, stdout], level: info }
+      system: { appenders: [system, stdout], level: info }
+      access: { appenders: [access, stdout], level: info }
+      stream: { appenders: [stream, stdout], level: info }
+      encode: { appenders: [encode, stdout], level: info }
+
+  epgUpdaterLogConfig.yml: |
+    appenders:
+      system: { type: file, maxLogSize: 1048576, backups: 3, filename: "%EPGUpdaterSystem%", pattern: "-yyyy-MM-dd" }
+      access: { type: file, maxLogSize: 1048576, backups: 3, filename: "%EPGUpdaterAccess%", pattern: "-yyyy-MM-dd" }
+      stream: { type: file, maxLogSize: 1048576, backups: 3, filename: "%EPGUpdaterStream%", pattern: "-yyyy-MM-dd" }
+      encode: { type: file, maxLogSize: 1048576, backups: 3, filename: "%EPGUpdaterEncode%", pattern: "-yyyy-MM-dd" }
+      console: { type: console }
+      stdout: { type: stdout }
+    categories:
+      default: { appenders: [console, stdout], level: info }
+      system: { appenders: [system, stdout], level: info }
+      access: { appenders: [access, stdout], level: info }
+      stream: { appenders: [stream, stdout], level: info }
